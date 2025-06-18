@@ -3,6 +3,9 @@ import { useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+
 
 
 // Définition du type de données pour chaque note
@@ -93,12 +96,51 @@ export default function NotesScreen() {
     </View>
   );
   const filteredNotes = filter === 'All' ? notes : notes.filter(note => note.priority === filter);
+const exportToPDF = async () => {
+  try {
+    const htmlContent = `
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <style>
+            body { font-family: Arial; padding: 20px; }
+            h1 { color: #114B5F; }
+            .note { margin-bottom: 30px; border-bottom: 1px solid #ccc; padding-bottom: 10px; }
+            .title { font-size: 18px; font-weight: bold; color: #114B5F; }
+            .date, .priority { color: #555; font-size: 12px; }
+            .content { margin-top: 8px; font-size: 14px; color: #222; }
+          </style>
+        </head>
+        <body>
+          <h1>My Notes</h1>
+          ${filteredNotes.map(note => `
+            <div class="note">
+              <div class="title">${note.title}</div>
+              <div class="date">📅 ${new Date(note.date).toLocaleDateString()}</div>
+              <div class="priority">🎯 Priority: ${note.priority}</div>
+              <div class="content">${note.content.replace(/\n/g, '<br>')}</div>
+            </div>
+          `).join('')}
+        </body>
+      </html>
+    `;
+
+    const { uri } = await Print.printToFileAsync({ html: htmlContent });
+    await Sharing.shareAsync(uri);
+  } catch (error) {
+    console.error('PDF export failed', error);
+  }
+};
 
 
   return (
     <View style={styles.container}>
       {/* En-tête avec bouton retour et bouton d’ajout */}
       <View style={styles.header}>
+        <TouchableOpacity onPress={exportToPDF}>
+  <FontAwesome name="file-pdf-o" size={22} color="#7EE4EC" />
+</TouchableOpacity>
+
         <TouchableOpacity onPress={() => router.back()}>
           <FontAwesome name="arrow-left" size={22} color="#7EE4EC" />
         </TouchableOpacity>
