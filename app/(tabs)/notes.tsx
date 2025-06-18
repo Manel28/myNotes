@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
 
+
 // Définition du type de données pour chaque note
 type Note = {
   id: string;
@@ -32,6 +33,7 @@ export default function NotesScreen() {
 
   // Router de navigation (expo-router)
   const router = useRouter();
+  const [filter, setFilter] = useState<'All' | 'Low' | 'Medium' | 'High'>('All');
 
   // Rechargement des notes à chaque fois que l’écran est affiché
   useFocusEffect(() => {
@@ -90,6 +92,8 @@ export default function NotesScreen() {
       </Text>
     </View>
   );
+  const filteredNotes = filter === 'All' ? notes : notes.filter(note => note.priority === filter);
+
 
   return (
     <View style={styles.container}>
@@ -105,19 +109,40 @@ export default function NotesScreen() {
       </View>
 
       {/* Liste des notes OU message si vide */}
-      {notes.length > 0 ? (
-        <FlatList
-          data={notes}
-          keyExtractor={(item) => item.id}
-          renderItem={renderNote}
-          contentContainerStyle={styles.list}
-        />
-      ) : (
-        <View style={styles.emptyState}>
-          <FontAwesome name="sticky-note-o" size={60} color="#7EE4EC" />
-          <Text style={styles.emptyText}>No notes yet. Tap "+" to add one!</Text>
-        </View>
-      )}
+      {filteredNotes.length > 0 ? (
+  <>
+    <View style={styles.filterBar}>
+      {['All', 'Low', 'Medium', 'High'].map((level) => (
+        <TouchableOpacity
+          key={level}
+          onPress={() => setFilter(level as typeof filter)}
+          style={[
+            styles.filterButton,
+            {
+              backgroundColor:
+                filter === level ? PRIORITY_COLORS[level] || '#ccc' : '#163E4D',
+            },
+          ]}
+        >
+          <Text style={styles.filterText}>{level}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+
+    <FlatList
+      data={filteredNotes}
+      keyExtractor={(item) => item.id}
+      renderItem={renderNote}
+      contentContainerStyle={styles.list}
+    />
+  </>
+) : (
+  <View style={styles.emptyState}>
+    <FontAwesome name="sticky-note-o" size={60} color="#7EE4EC" />
+    <Text style={styles.emptyText}>No notes yet. Tap "+" to add one!</Text>
+  </View>
+)}
+
 
       {/* Modale de confirmation de suppression */}
       <Modal visible={modalVisible} transparent animationType="fade">
@@ -243,4 +268,20 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
   },
+  filterBar: {
+  flexDirection: 'row',
+  justifyContent: 'space-around',
+  marginBottom: 20,
+  gap: 6,
+},
+filterButton: {
+  paddingVertical: 8,
+  paddingHorizontal: 14,
+  borderRadius: 10,
+},
+filterText: {
+  color: '#fff',
+  fontWeight: 'bold',
+},
+
 });
