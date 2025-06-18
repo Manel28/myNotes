@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 14,
     paddingHorizontal: 30,
-    borderRadius: 50, // 
+    borderRadius: 50, 
     width: '100%',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -86,10 +86,10 @@ const styles = StyleSheet.create({
     elevation: 6, 
   },
   blueButton: {
-    backgroundColor: '#456990', // 
+    backgroundColor: '#456990', 
   },
   redButton: {
-    backgroundColor: '#F45B69', // 
+    backgroundColor: '#F45B69', 
   },
   buttonText: {
     color: '#FFFFFF',

@@ -1,27 +1,51 @@
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, Platform, Alert } from 'react-native';
-import { useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useState, useEffect } from 'react';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, FontAwesome } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-//   découpage et usage des hooks
+// Composant principal de la page Formulaire (ajout ou édition de note)
 export default function FormScreen() {
   const router = useRouter();
+  const { id } = useLocalSearchParams(); // récupère l’ID si on est en mode édition
+
+  // États locaux pour gérer les champs
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [priority, setPriority] = useState<'Low' | 'Medium' | 'High' | null>(null);
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
 
-  // ici je  gères la compatibilité iOS/Android
+  // Si on est en édition, on charge la note existante
+  useEffect(() => {
+    if (id) {
+      const loadNote = async () => {
+        const storedNotes = await AsyncStorage.getItem('notes');
+        const parsedNotes = storedNotes ? JSON.parse(storedNotes) : [];
+        const existingNote = parsedNotes.find((n) => n.id === id);
+
+        if (existingNote) {
+          setTitle(existingNote.title);
+          setContent(existingNote.content);
+          setPriority(existingNote.priority);
+          setDate(new Date(existingNote.date));
+          setIsEditMode(true);
+        }
+      };
+      loadNote();
+    }
+  }, [id]);
+
+  // Gestion du changement de date (iOS/Android compatible)
   const handleDateChange = (event, selectedDate) => {
     const currentDate = selectedDate || date;
     setShowDatePicker(Platform.OS === 'ios');
     setDate(currentDate);
   };
 
-  //  Fonction propre, logique, et bien protégée contre les champs vides
+  // Sauvegarde de la note (en création ou en modification)
   const handleSave = async () => {
     if (!title || !content || !priority) {
       Alert.alert('Missing Information', 'Please fill in all fields before saving.');
@@ -30,23 +54,25 @@ export default function FormScreen() {
 
     try {
       const newNote = {
-        id: Date.now().toString(), //  j’utilise l’horodatage comme ID unique
+        id: isEditMode ? id : Date.now().toString(),
         title,
         content,
         priority,
-        date: date.toISOString(), // c un Format universel et fiable
+        date: date.toISOString(),
       };
 
-      // Récupération de l’existant
-      const existingNotes = await AsyncStorage.getItem('notes');
-      const notes = existingNotes ? JSON.parse(existingNotes) : [];
+      const storedNotes = await AsyncStorage.getItem('notes');
+      let notes = storedNotes ? JSON.parse(storedNotes) : [];
 
-      //  Ajout
-      notes.push(newNote);
+      // Si édition → remplacement, sinon → ajout
+      if (isEditMode) {
+        notes = notes.map((note) => (note.id === id ? newNote : note));
+      } else {
+        notes.push(newNote);
+      }
+
       await AsyncStorage.setItem('notes', JSON.stringify(notes));
-
-      //  Redirection vers la page des notes
-      router.push('/notes');
+      router.push('/notes'); // Redirection
     } catch (error) {
       console.error('Error saving note:', error);
       Alert.alert('Error', 'Failed to save the note.');
@@ -55,16 +81,16 @@ export default function FormScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header  */}
+      {/* Header avec retour et icône */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#7EE4EC" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>New Note</Text>
+        <Text style={styles.headerTitle}>{isEditMode ? 'Edit Note' : 'New Note'}</Text>
         <FontAwesome name="sticky-note" size={24} color="#7EE4EC" />
       </View>
 
-      {/*  Champ titre */}
+      {/* Champ Titre */}
       <TextInput
         style={styles.input}
         placeholder="Note Title"
@@ -73,7 +99,7 @@ export default function FormScreen() {
         onChangeText={setTitle}
       />
 
-      {/* Champ contenu */}
+      {/* Champ Contenu */}
       <TextInput
         style={[styles.input, styles.textArea]}
         placeholder="Note Content"
@@ -84,13 +110,12 @@ export default function FormScreen() {
         onChangeText={setContent}
       />
 
-      {/*  Date */}
+      {/* Sélection de la date */}
       <Text style={styles.label}>Date</Text>
       <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
         <Text style={{ color: '#fff' }}>{date.toLocaleDateString()}</Text>
       </TouchableOpacity>
 
-      {/*  Picker si activé */}
       {showDatePicker && (
         <DateTimePicker
           value={date}
@@ -100,26 +125,24 @@ export default function FormScreen() {
         />
       )}
 
-      {/*  Priorité */}
+      {/* Sélection de la priorité */}
       <Text style={styles.label}>Priority</Text>
       <View style={styles.priorityContainer}>
-        {/*  sortir ce tableau en constante plus haut */}
-        {[
-          { label: 'Low', color: '#7EE4EC' },
-          { label: 'Medium', color: '#FFD4CA' },
-          { label: 'High', color: '#F45B69' },
-        ].map(({ label, color }) => (
-          <TouchableOpacity
-            key={label}
-            style={[
-              styles.priorityButton,
-              { backgroundColor: priority === label ? color : '#163E4D' },
-            ]}
-            onPress={() => setPriority(label as 'Low' | 'Medium' | 'High')}
-          >
-            <Text style={styles.priorityText}>{label}</Text>
-          </TouchableOpacity>
-        ))}
+        {['Low', 'Medium', 'High'].map((label) => {
+          const color = label === 'Low' ? '#7EE4EC' : label === 'Medium' ? '#FFD4CA' : '#F45B69';
+          return (
+            <TouchableOpacity
+              key={label}
+              style={[
+                styles.priorityButton,
+                { backgroundColor: priority === label ? color : '#163E4D' },
+              ]}
+              onPress={() => setPriority(label as 'Low' | 'Medium' | 'High')}
+            >
+              <Text style={styles.priorityText}>{label}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {/* Bouton de sauvegarde */}
@@ -131,7 +154,7 @@ export default function FormScreen() {
   );
 }
 
-// StyleSheet  !
+// Styles 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
