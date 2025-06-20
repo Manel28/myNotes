@@ -31,7 +31,7 @@ export default function HomeScreen() {
       {/* Bouton vers le formulaire d'ajout */}
       <TouchableOpacity
         style={[styles.button, styles.redButton]}
-        onPress={() => router.push('/form')}
+        onPress={() => router.push('/add')}
       >
         <Ionicons name="add-circle-outline" size={20} color="#FFF" />
         <Text style={styles.buttonText}>Add Note</Text>
